@@ -13,8 +13,9 @@ type ActionFunc func(ctx context.Context) Status
 
 // Action is a leaf node that executes a user-provided function.
 type Action struct {
-	name string
-	fn   ActionFunc
+	name       string
+	fn         ActionFunc
+	lastStatus *Status
 }
 
 // NewAction creates a new Action node with the given name and function.
@@ -27,12 +28,19 @@ func NewAction(name string, fn ActionFunc) *Action {
 
 // Tick executes the action's function and returns its status.
 func (a *Action) Tick(ctx context.Context) Status {
-	return a.fn(ctx)
+	status := a.fn(ctx)
+	a.lastStatus = &status
+	return status
 }
 
 // String returns the name of the action (implements fmt.Stringer).
 func (a *Action) String() string {
 	return a.name
+}
+
+// LastStatus returns the result of the most recent tick (implements Stateful).
+func (a *Action) LastStatus() *Status {
+	return a.lastStatus
 }
 
 // ConditionFunc is a predicate that evaluates to true or false.
@@ -41,8 +49,9 @@ type ConditionFunc func(ctx context.Context) bool
 // Condition is a leaf node that evaluates a predicate.
 // Returns Success if true, Failure if false. Never returns Running.
 type Condition struct {
-	name string
-	fn   ConditionFunc
+	name       string
+	fn         ConditionFunc
+	lastStatus *Status
 }
 
 // NewCondition creates a new Condition node with the given name
@@ -57,13 +66,22 @@ func NewCondition(name string, fn ConditionFunc) *Condition {
 // Tick evaluates the condition's predicate and returns Success if true,
 // Failure if false. Never returns Running.
 func (c *Condition) Tick(ctx context.Context) Status {
+	var status Status
 	if c.fn(ctx) {
-		return Success
+		status = Success
+	} else {
+		status = Failure
 	}
-	return Failure
+	c.lastStatus = &status
+	return status
 }
 
 // String returns the name of the condition (implements fmt.Stringer).
 func (c *Condition) String() string {
 	return c.name
+}
+
+// LastStatus returns the result of the most recent tick (implements Stateful).
+func (c *Condition) LastStatus() *Status {
+	return c.lastStatus
 }
