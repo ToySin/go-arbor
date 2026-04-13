@@ -45,3 +45,15 @@ type Parent interface {
 	// Children returns the child nodes of this parent node.
 	Children() []Node
 }
+
+// Stateful is implemented by nodes that track their last tick result.
+// Used by the visualization system to display node status.
+type Stateful interface {
+	// LastStatus returns the result of the most recent tick,
+	// or nil if the node has not been ticked yet.
+	LastStatus() *Status
+}
+
+func statusPtr(s Status) *Status {
+	return &s
+}
