@@ -4,23 +4,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	bt "github.com/ToySin/go-bt"
 )
 
 func TestStatus_String(t *testing.T) {
-	tests := []struct {
-		status bt.Status
-		want   string
-	}{
-		{bt.Success, "Success"},
-		{bt.Failure, "Failure"},
-		{bt.Running, "Running"},
-	}
-	for _, tt := range tests {
-		if got := tt.status.String(); got != tt.want {
-			t.Errorf("Status.String() = %q, want %q", got, tt.want)
-		}
-	}
+	assert.Equal(t, "Success", bt.Success.String())
+	assert.Equal(t, "Failure", bt.Failure.String())
+	assert.Equal(t, "Running", bt.Running.String())
 }
 
 func TestSequence_AllSuccess(t *testing.T) {
@@ -36,15 +28,10 @@ func TestSequence_AllSuccess(t *testing.T) {
 		}),
 	)
 
-	tree := bt.NewTree(seq)
-	status := tree.Tick(context.Background())
+	status := bt.NewTree(seq).Tick(context.Background())
 
-	if status != bt.Success {
-		t.Errorf("got %v, want Success", status)
-	}
-	if len(called) != 2 || called[0] != "a1" || called[1] != "a2" {
-		t.Errorf("expected [a1 a2], got %v", called)
-	}
+	assert.Equal(t, bt.Success, status)
+	assert.Equal(t, []string{"a1", "a2"}, called)
 }
 
 func TestSequence_FailsOnFirstFailure(t *testing.T) {
@@ -62,12 +49,8 @@ func TestSequence_FailsOnFirstFailure(t *testing.T) {
 
 	status := bt.NewTree(seq).Tick(context.Background())
 
-	if status != bt.Failure {
-		t.Errorf("got %v, want Failure", status)
-	}
-	if len(called) != 1 {
-		t.Errorf("a2 should not have been called, got %v", called)
-	}
+	assert.Equal(t, bt.Failure, status)
+	assert.Equal(t, []string{"a1"}, called)
 }
 
 func TestSequence_Running_ResumesFromRunningChild(t *testing.T) {
@@ -87,21 +70,10 @@ func TestSequence_Running_ResumesFromRunningChild(t *testing.T) {
 
 	tree := bt.NewTree(seq)
 
-	// First tick: a1 succeeds, a2 returns Running
-	if s := tree.Tick(context.Background()); s != bt.Running {
-		t.Errorf("tick 1: got %v, want Running", s)
-	}
-	// Second tick: resumes from a2, still Running
-	if s := tree.Tick(context.Background()); s != bt.Running {
-		t.Errorf("tick 2: got %v, want Running", s)
-	}
-	// Third tick: a2 succeeds
-	if s := tree.Tick(context.Background()); s != bt.Success {
-		t.Errorf("tick 3: got %v, want Success", s)
-	}
-	if tickCount != 3 {
-		t.Errorf("a2 should have been ticked 3 times, got %d", tickCount)
-	}
+	assert.Equal(t, bt.Running, tree.Tick(context.Background()), "tick 1")
+	assert.Equal(t, bt.Running, tree.Tick(context.Background()), "tick 2")
+	assert.Equal(t, bt.Success, tree.Tick(context.Background()), "tick 3")
+	assert.Equal(t, 3, tickCount)
 }
 
 func TestFallback_SucceedsOnFirstSuccess(t *testing.T) {
@@ -123,12 +95,8 @@ func TestFallback_SucceedsOnFirstSuccess(t *testing.T) {
 
 	status := bt.NewTree(fb).Tick(context.Background())
 
-	if status != bt.Success {
-		t.Errorf("got %v, want Success", status)
-	}
-	if len(called) != 2 || called[1] != "a2" {
-		t.Errorf("expected [a1 a2], got %v", called)
-	}
+	assert.Equal(t, bt.Success, status)
+	assert.Equal(t, []string{"a1", "a2"}, called)
 }
 
 func TestFallback_AllFail(t *testing.T) {
@@ -139,9 +107,7 @@ func TestFallback_AllFail(t *testing.T) {
 
 	status := bt.NewTree(fb).Tick(context.Background())
 
-	if status != bt.Failure {
-		t.Errorf("got %v, want Failure", status)
-	}
+	assert.Equal(t, bt.Failure, status)
 }
 
 func TestFallback_Running_ResumesFromRunningChild(t *testing.T) {
@@ -161,28 +127,20 @@ func TestFallback_Running_ResumesFromRunningChild(t *testing.T) {
 
 	tree := bt.NewTree(fb)
 
-	if s := tree.Tick(context.Background()); s != bt.Running {
-		t.Errorf("tick 1: got %v, want Running", s)
-	}
-	if s := tree.Tick(context.Background()); s != bt.Success {
-		t.Errorf("tick 2: got %v, want Success", s)
-	}
+	assert.Equal(t, bt.Running, tree.Tick(context.Background()), "tick 1")
+	assert.Equal(t, bt.Success, tree.Tick(context.Background()), "tick 2")
 }
 
 func TestCondition(t *testing.T) {
 	cond := bt.NewCondition("is-true", func(ctx context.Context) bool {
 		return true
 	})
-	if s := cond.Tick(context.Background()); s != bt.Success {
-		t.Errorf("got %v, want Success", s)
-	}
+	assert.Equal(t, bt.Success, cond.Tick(context.Background()))
 
 	cond2 := bt.NewCondition("is-false", func(ctx context.Context) bool {
 		return false
 	})
-	if s := cond2.Tick(context.Background()); s != bt.Failure {
-		t.Errorf("got %v, want Failure", s)
-	}
+	assert.Equal(t, bt.Failure, cond2.Tick(context.Background()))
 }
 
 func TestComposite_ConditionAndAction(t *testing.T) {
@@ -201,12 +159,8 @@ func TestComposite_ConditionAndAction(t *testing.T) {
 
 	status := tree.Tick(context.Background())
 
-	if status != bt.Success {
-		t.Errorf("got %v, want Success", status)
-	}
-	if !executed {
-		t.Error("action should have been executed")
-	}
+	assert.Equal(t, bt.Success, status)
+	assert.True(t, executed)
 }
 
 func TestComposite_ConditionGuardBlocks(t *testing.T) {
@@ -225,12 +179,8 @@ func TestComposite_ConditionGuardBlocks(t *testing.T) {
 
 	status := tree.Tick(context.Background())
 
-	if status != bt.Failure {
-		t.Errorf("got %v, want Failure", status)
-	}
-	if executed {
-		t.Error("action should not have been executed")
-	}
+	assert.Equal(t, bt.Failure, status)
+	assert.False(t, executed)
 }
 
 func TestNestedTree(t *testing.T) {
@@ -239,7 +189,7 @@ func TestNestedTree(t *testing.T) {
 	// │   ├── Condition: false
 	// │   └── Action: should not run
 	// └── Action: fallback action (should run)
-	fallbackRan := false
+	executed := false
 	tree := bt.NewTree(
 		bt.NewFallback("root",
 			bt.NewSequence("branch-1",
@@ -247,12 +197,12 @@ func TestNestedTree(t *testing.T) {
 					return false
 				}),
 				bt.NewAction("unreachable", func(ctx context.Context) bt.Status {
-					t.Error("should not be reached")
+					assert.Fail(t, "should not be reached")
 					return bt.Success
 				}),
 			),
 			bt.NewAction("fallback-action", func(ctx context.Context) bt.Status {
-				fallbackRan = true
+				executed = true
 				return bt.Success
 			}),
 		),
@@ -260,10 +210,6 @@ func TestNestedTree(t *testing.T) {
 
 	status := tree.Tick(context.Background())
 
-	if status != bt.Success {
-		t.Errorf("got %v, want Success", status)
-	}
-	if !fallbackRan {
-		t.Error("fallback action should have run")
-	}
+	assert.Equal(t, bt.Success, status)
+	assert.True(t, executed)
 }
