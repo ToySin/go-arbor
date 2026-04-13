@@ -1,4 +1,4 @@
-module github.com/ToySin/go-bt
+module github.com/ToySin/go-arbor
 
 go 1.25.0
 

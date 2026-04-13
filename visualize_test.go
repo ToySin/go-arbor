@@ -1,4 +1,4 @@
-package bt_test
+package arbor_test
 
 import (
 	"context"
@@ -6,22 +6,22 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	bt "github.com/ToySin/go-bt"
+	arbor "github.com/ToySin/go-arbor"
 )
 
 func TestPrintTree_BeforeTick(t *testing.T) {
-	tree := bt.NewTree(
-		bt.NewSequence("root",
-			bt.NewCondition("check", func(ctx context.Context) bool {
+	tree := arbor.NewTree(
+		arbor.NewSequence("root",
+			arbor.NewCondition("check", func(ctx context.Context) bool {
 				return true
 			}),
-			bt.NewAction("work", func(ctx context.Context) bt.Status {
-				return bt.Success
+			arbor.NewAction("work", func(ctx context.Context) arbor.Status {
+				return arbor.Success
 			}),
 		),
 	)
 
-	output := bt.SprintTree(tree)
+	output := arbor.SprintTree(tree)
 
 	assert.Contains(t, output, "Sequence: root (-)")
 	assert.Contains(t, output, "Condition: check (-)")
@@ -30,19 +30,19 @@ func TestPrintTree_BeforeTick(t *testing.T) {
 }
 
 func TestPrintTree_AfterTick(t *testing.T) {
-	tree := bt.NewTree(
-		bt.NewSequence("root",
-			bt.NewCondition("check", func(ctx context.Context) bool {
+	tree := arbor.NewTree(
+		arbor.NewSequence("root",
+			arbor.NewCondition("check", func(ctx context.Context) bool {
 				return true
 			}),
-			bt.NewAction("work", func(ctx context.Context) bt.Status {
-				return bt.Success
+			arbor.NewAction("work", func(ctx context.Context) arbor.Status {
+				return arbor.Success
 			}),
 		),
 	)
 
 	tree.Tick(context.Background())
-	output := bt.SprintTree(tree)
+	output := arbor.SprintTree(tree)
 
 	assert.Contains(t, output, "[✓] Sequence: root (Success)")
 	assert.Contains(t, output, "[✓] Condition: check (Success)")
@@ -50,22 +50,22 @@ func TestPrintTree_AfterTick(t *testing.T) {
 }
 
 func TestPrintTree_Running(t *testing.T) {
-	tree := bt.NewTree(
-		bt.NewSequence("dispatch",
-			bt.NewCondition("agent-idle", func(ctx context.Context) bool {
+	tree := arbor.NewTree(
+		arbor.NewSequence("dispatch",
+			arbor.NewCondition("agent-idle", func(ctx context.Context) bool {
 				return true
 			}),
-			bt.NewAction("assign-job", func(ctx context.Context) bt.Status {
-				return bt.Running
+			arbor.NewAction("assign-job", func(ctx context.Context) arbor.Status {
+				return arbor.Running
 			}),
-			bt.NewAction("notify", func(ctx context.Context) bt.Status {
-				return bt.Success
+			arbor.NewAction("notify", func(ctx context.Context) arbor.Status {
+				return arbor.Success
 			}),
 		),
 	)
 
 	tree.Tick(context.Background())
-	output := bt.SprintTree(tree)
+	output := arbor.SprintTree(tree)
 
 	assert.Contains(t, output, "[~] Sequence: dispatch (Running)")
 	assert.Contains(t, output, "[✓] Condition: agent-idle (Success)")
@@ -74,24 +74,24 @@ func TestPrintTree_Running(t *testing.T) {
 }
 
 func TestPrintTree_NestedFallback(t *testing.T) {
-	tree := bt.NewTree(
-		bt.NewFallback("root",
-			bt.NewSequence("branch-1",
-				bt.NewCondition("guard", func(ctx context.Context) bool {
+	tree := arbor.NewTree(
+		arbor.NewFallback("root",
+			arbor.NewSequence("branch-1",
+				arbor.NewCondition("guard", func(ctx context.Context) bool {
 					return false
 				}),
-				bt.NewAction("unreachable", func(ctx context.Context) bt.Status {
-					return bt.Success
+				arbor.NewAction("unreachable", func(ctx context.Context) arbor.Status {
+					return arbor.Success
 				}),
 			),
-			bt.NewAction("fallback-action", func(ctx context.Context) bt.Status {
-				return bt.Success
+			arbor.NewAction("fallback-action", func(ctx context.Context) arbor.Status {
+				return arbor.Success
 			}),
 		),
 	)
 
 	tree.Tick(context.Background())
-	output := bt.SprintTree(tree)
+	output := arbor.SprintTree(tree)
 
 	assert.Contains(t, output, "[✓] Fallback: root (Success)")
 	assert.Contains(t, output, "[✗] Sequence: branch-1 (Failure)")

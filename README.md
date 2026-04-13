@@ -1,4 +1,4 @@
-# go-bt
+# go-arbor
 
 A generic Behavior Tree library for Go.
 
