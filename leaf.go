@@ -7,13 +7,8 @@ import "context"
 // The function should not block for long periods of time;
 // if it needs to perform long-running work, it should return Running
 // and continue the work on subsequent ticks.
-// The function should be thread-safe and reentrant, as it may be called
-// concurrently from multiple ticks.
-//
-// The function should not modify the context, as it may be shared across ticks.
 // The function should not panic; if it encounters an error,
-// it should return Failure. The function should be terminated by the caller
-// using the context's cancellation mechanism.
+// it should return Failure.
 type ActionFunc func(ctx context.Context) Status
 
 // Action is a leaf node that executes a user-provided function.
