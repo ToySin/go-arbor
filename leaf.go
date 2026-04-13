@@ -29,7 +29,7 @@ func NewAction(name string, fn ActionFunc) *Action {
 // Tick executes the action's function and returns its status.
 func (a *Action) Tick(ctx context.Context) Status {
 	status := a.fn(ctx)
-	a.lastStatus = &status
+	a.lastStatus = statusPtr(status)
 	return status
 }
 
@@ -66,13 +66,11 @@ func NewCondition(name string, fn ConditionFunc) *Condition {
 // Tick evaluates the condition's predicate and returns Success if true,
 // Failure if false. Never returns Running.
 func (c *Condition) Tick(ctx context.Context) Status {
-	var status Status
+	status := Failure
 	if c.fn(ctx) {
 		status = Success
-	} else {
-		status = Failure
 	}
-	c.lastStatus = &status
+	c.lastStatus = statusPtr(status)
 	return status
 }
 

@@ -53,3 +53,7 @@ type Stateful interface {
 	// or nil if the node has not been ticked yet.
 	LastStatus() *Status
 }
+
+func statusPtr(s Status) *Status {
+	return &s
+}

@@ -29,17 +29,16 @@ func (s *Sequence) Tick(ctx context.Context) Status {
 		switch status {
 		case Running:
 			s.current = i
-			s.lastStatus = &status
+			s.lastStatus = statusPtr(status)
 			return Running
 		case Failure:
 			s.current = 0
-			s.lastStatus = &status
+			s.lastStatus = statusPtr(status)
 			return Failure
 		}
 	}
 	s.current = 0
-	st := Success
-	s.lastStatus = &st
+	s.lastStatus = statusPtr(Success)
 	return Success
 }
 
@@ -85,17 +84,16 @@ func (f *Fallback) Tick(ctx context.Context) Status {
 		switch status {
 		case Running:
 			f.current = i
-			f.lastStatus = &status
+			f.lastStatus = statusPtr(status)
 			return Running
 		case Success:
 			f.current = 0
-			f.lastStatus = &status
+			f.lastStatus = statusPtr(status)
 			return Success
 		}
 	}
 	f.current = 0
-	st := Failure
-	f.lastStatus = &st
+	f.lastStatus = statusPtr(Failure)
 	return Failure
 }
 
