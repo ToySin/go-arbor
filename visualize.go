@@ -35,6 +35,8 @@ func nodeType(n Node) string {
 		return "Sequence"
 	case *Fallback:
 		return "Fallback"
+	case *Parallel:
+		return "Parallel"
 	case *Action:
 		return "Action"
 	case *Condition:

@@ -111,3 +111,117 @@ func (f *Fallback) Children() []Node {
 func (f *Fallback) String() string {
 	return f.name
 }
+
+// ParallelPolicy defines when a Parallel node should return Success or Failure.
+// ParallelOption configures a Parallel node.
+type ParallelOption func(*Parallel)
+
+// WithSuccessThreshold sets the number of children that must succeed
+// for the Parallel node to return Success.
+func WithSuccessThreshold(n int) ParallelOption {
+	return func(p *Parallel) {
+		p.successThreshold = n
+	}
+}
+
+// WithFailureThreshold sets the number of children that must fail
+// for the Parallel node to return Failure.
+func WithFailureThreshold(n int) ParallelOption {
+	return func(p *Parallel) {
+		p.failureThreshold = n
+	}
+}
+
+// Parallel ticks all non-completed children on each tick.
+// By default, all children must succeed (successThreshold = len(children))
+// and one failure is enough to fail (failureThreshold = 1).
+type Parallel struct {
+	name             string
+	children         []Node
+	successThreshold int
+	failureThreshold int
+	completed        []Status
+	done             []bool
+	lastStatus       *Status
+}
+
+// NewParallel creates a new Parallel node with the given name and child nodes.
+// Default policy: all children must succeed, one failure causes Failure.
+func NewParallel(name string, children []Node, opts ...ParallelOption) *Parallel {
+	p := &Parallel{
+		name:             name,
+		children:         children,
+		successThreshold: len(children),
+		failureThreshold: 1,
+		completed:        make([]Status, len(children)),
+		done:             make([]bool, len(children)),
+	}
+	for _, opt := range opts {
+		opt(p)
+	}
+	return p
+}
+
+// Tick executes all non-completed children and evaluates the policy thresholds.
+func (p *Parallel) Tick(ctx context.Context) Status {
+	successCount := 0
+	failureCount := 0
+
+	for i, child := range p.children {
+		if p.done[i] {
+			if p.completed[i] == Success {
+				successCount++
+			} else {
+				failureCount++
+			}
+			continue
+		}
+
+		status := child.Tick(ctx)
+		switch status {
+		case Success:
+			p.done[i] = true
+			p.completed[i] = Success
+			successCount++
+		case Failure:
+			p.done[i] = true
+			p.completed[i] = Failure
+			failureCount++
+		}
+
+		if successCount >= p.successThreshold {
+			p.reset()
+			p.lastStatus = statusPtr(Success)
+			return Success
+		}
+		if failureCount >= p.failureThreshold {
+			p.reset()
+			p.lastStatus = statusPtr(Failure)
+			return Failure
+		}
+	}
+
+	p.lastStatus = statusPtr(Running)
+	return Running
+}
+
+func (p *Parallel) reset() {
+	for i := range p.done {
+		p.done[i] = false
+	}
+}
+
+// LastStatus returns the result of the most recent tick (implements Stateful).
+func (p *Parallel) LastStatus() *Status {
+	return p.lastStatus
+}
+
+// Children returns the child nodes of this parallel (implements Parent).
+func (p *Parallel) Children() []Node {
+	return p.children
+}
+
+// String returns the name of the parallel (implements fmt.Stringer).
+func (p *Parallel) String() string {
+	return p.name
+}
