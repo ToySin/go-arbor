@@ -33,6 +33,12 @@ func (inv *Inverter) Tick(ctx context.Context) Status {
 	}
 }
 
+// Halt propagates halt to the child and resets state.
+func (inv *Inverter) Halt() {
+	haltNode(inv.child)
+	inv.lastStatus = nil
+}
+
 // Children returns the child node of the Inverter.
 func (inv *Inverter) Children() []Node { return []Node{inv.child} }
 
@@ -81,6 +87,13 @@ func (r *Repeater) Tick(ctx context.Context) Status {
 		return Running
 	}
 	return Failure
+}
+
+// Halt propagates halt to the child and resets the repeat counter.
+func (r *Repeater) Halt() {
+	haltNode(r.child)
+	r.current = 0
+	r.lastStatus = nil
 }
 
 // Children returns the child node of the Repeater.
@@ -132,6 +145,13 @@ func (r *Retry) Tick(ctx context.Context) Status {
 	return Failure
 }
 
+// Halt propagates halt to the child and resets the attempt counter.
+func (r *Retry) Halt() {
+	haltNode(r.child)
+	r.attempts = 0
+	r.lastStatus = nil
+}
+
 // Children returns the child node of the Retry.
 func (r *Retry) Children() []Node { return []Node{r.child} }
 
@@ -179,6 +199,13 @@ func (t *Timeout) Tick(ctx context.Context) Status {
 		t.lastStatus = statusPtr(status)
 		return status
 	}
+}
+
+// Halt propagates halt to the child and resets the timer.
+func (t *Timeout) Halt() {
+	haltNode(t.child)
+	t.running = false
+	t.lastStatus = nil
 }
 
 // Children returns the child node of the Timeout.

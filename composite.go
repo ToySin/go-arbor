@@ -42,6 +42,15 @@ func (s *Sequence) Tick(ctx context.Context) Status {
 	return Success
 }
 
+// Halt interrupts the Sequence and halts the currently Running child.
+func (s *Sequence) Halt() {
+	if s.current < len(s.children) {
+		haltNode(s.children[s.current])
+	}
+	s.current = 0
+	s.lastStatus = nil
+}
+
 // LastStatus returns the result of the most recent tick (implements Stateful).
 func (s *Sequence) LastStatus() *Status {
 	return s.lastStatus
@@ -95,6 +104,15 @@ func (f *Fallback) Tick(ctx context.Context) Status {
 	f.current = 0
 	f.lastStatus = statusPtr(Failure)
 	return Failure
+}
+
+// Halt interrupts the Fallback and halts the currently Running child.
+func (f *Fallback) Halt() {
+	if f.current < len(f.children) {
+		haltNode(f.children[f.current])
+	}
+	f.current = 0
+	f.lastStatus = nil
 }
 
 // LastStatus returns the result of the most recent tick (implements Stateful).
@@ -209,6 +227,17 @@ func (p *Parallel) reset() {
 	for i := range p.done {
 		p.done[i] = false
 	}
+}
+
+// Halt interrupts the Parallel and halts all Running children.
+func (p *Parallel) Halt() {
+	for i, child := range p.children {
+		if !p.done[i] {
+			haltNode(child)
+		}
+	}
+	p.reset()
+	p.lastStatus = nil
 }
 
 // LastStatus returns the result of the most recent tick (implements Stateful).

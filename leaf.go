@@ -11,19 +11,34 @@ import "context"
 // it should return Failure.
 type ActionFunc func(ctx context.Context) Status
 
+// ActionOption configures an Action node.
+type ActionOption func(*Action)
+
+// WithHaltFunc sets a function to be called when the Action is halted.
+func WithHaltFunc(fn func()) ActionOption {
+	return func(a *Action) {
+		a.haltFn = fn
+	}
+}
+
 // Action is a leaf node that executes a user-provided function.
 type Action struct {
 	name       string
 	fn         ActionFunc
+	haltFn     func()
 	lastStatus *Status
 }
 
 // NewAction creates a new Action node with the given name and function.
-func NewAction(name string, fn ActionFunc) *Action {
-	return &Action{
+func NewAction(name string, fn ActionFunc, opts ...ActionOption) *Action {
+	a := &Action{
 		name: name,
 		fn:   fn,
 	}
+	for _, opt := range opts {
+		opt(a)
+	}
+	return a
 }
 
 // Tick executes the action's function and returns its status.
@@ -36,6 +51,14 @@ func (a *Action) Tick(ctx context.Context) Status {
 // String returns the name of the action (implements fmt.Stringer).
 func (a *Action) String() string {
 	return a.name
+}
+
+// Halt calls the optional halt function if set, and resets lastStatus.
+func (a *Action) Halt() {
+	if a.haltFn != nil {
+		a.haltFn()
+	}
+	a.lastStatus = nil
 }
 
 // LastStatus returns the result of the most recent tick (implements Stateful).
@@ -72,6 +95,11 @@ func (c *Condition) Tick(ctx context.Context) Status {
 	}
 	c.lastStatus = statusPtr(status)
 	return status
+}
+
+// Halt resets the condition's lastStatus.
+func (c *Condition) Halt() {
+	c.lastStatus = nil
 }
 
 // String returns the name of the condition (implements fmt.Stringer).

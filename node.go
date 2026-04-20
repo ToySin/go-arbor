@@ -54,6 +54,20 @@ type Stateful interface {
 	LastStatus() *Status
 }
 
+// Haltable is implemented by nodes that can be interrupted while Running.
+// When a composite switches branches, it calls Halt() on the previously Running child.
+// Halt should reset internal state and propagate to Running children.
+type Haltable interface {
+	Halt()
+}
+
+// haltNode calls Halt() on the node if it implements Haltable.
+func haltNode(n Node) {
+	if h, ok := n.(Haltable); ok {
+		h.Halt()
+	}
+}
+
 func statusPtr(s Status) *Status {
 	return &s
 }
