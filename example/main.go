@@ -190,4 +190,57 @@ func main() {
 			return e.Status == arbor.Running
 		}),
 	)
+
+	// --- Scenario 6: Subtree with Blackboard mapping ---
+	fmt.Println("\n--- Scenario 6: Subtree (reusable assign module) ---")
+	agentIdle = true
+	batteryLevel = 80
+	assignAttempts = 0
+
+	// Reusable subtree: assigns a job to whatever "target" is in its Blackboard
+	assignSubtree := arbor.NewTree(
+		arbor.NewSequence("assign-flow",
+			arbor.NewAction("do-assign", func(ctx context.Context) arbor.Status {
+				bb := arbor.BlackboardFrom(ctx)
+				agent, _ := arbor.GetTyped[string](bb, "target")
+				job, _ := arbor.GetTyped[string](bb, "job")
+				fmt.Printf("  >> [subtree] Assigned %s to %s\n", job, agent)
+				bb.Set("result", "assigned")
+				return arbor.Success
+			}),
+			arbor.NewAction("do-notify", func(ctx context.Context) arbor.Status {
+				bb := arbor.BlackboardFrom(ctx)
+				agent, _ := arbor.GetTyped[string](bb, "target")
+				fmt.Printf("  >> [subtree] Notified %s\n", agent)
+				return arbor.Success
+			}),
+		),
+	)
+
+	mainTree := arbor.NewTree(
+		arbor.NewSequence("dispatch",
+			arbor.NewAction("find-agent", func(ctx context.Context) arbor.Status {
+				bb := arbor.BlackboardFrom(ctx)
+				bb.Set("selected_agent", "agent-3")
+				bb.Set("selected_job", "job-99")
+				fmt.Println("  >> Found best agent: agent-3")
+				return arbor.Success
+			}),
+			arbor.NewSubtree("assign-module", assignSubtree,
+				arbor.WithInputMapping("selected_agent", "target"),
+				arbor.WithInputMapping("selected_job", "job"),
+				arbor.WithOutputMapping("result", "assign_result"),
+			),
+			arbor.NewAction("verify", func(ctx context.Context) arbor.Status {
+				bb := arbor.BlackboardFrom(ctx)
+				result, _ := arbor.GetTyped[string](bb, "assign_result")
+				fmt.Printf("  >> Verify: assign_result=%s\n", result)
+				return arbor.Success
+			}),
+		),
+	)
+
+	fmt.Println("\n[Tick 1]")
+	mainTree.Tick(context.Background())
+	arbor.PrintTree(os.Stdout, mainTree)
 }
