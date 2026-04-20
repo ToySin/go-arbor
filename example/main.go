@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	arbor "github.com/ToySin/go-arbor"
 )
@@ -110,4 +111,23 @@ func main() {
 	fmt.Println("\n[Tick 1]")
 	tree.Tick(context.Background())
 	arbor.PrintTree(os.Stdout, tree)
+
+	// --- Scenario 4: Auto tick with Run ---
+	fmt.Println("\n--- Scenario 4: Auto tick with Run (500ms interval) ---")
+	batteryLevel = 80
+	agentIdle = true
+	assignAttempts = 0
+	tree = buildTree()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	tree.Run(ctx, 500*time.Millisecond,
+		arbor.WithTickCallback(func(e arbor.TickEvent) bool {
+			fmt.Printf("\n[Auto Tick %d] status=%s\n", e.Tick, e.Status)
+			arbor.PrintTree(os.Stdout, tree)
+			// Stop after tree completes (no more Running nodes).
+			return e.Status == arbor.Running
+		}),
+	)
 }
