@@ -37,6 +37,10 @@ func nodeType(n Node) string {
 		return "Fallback"
 	case *Parallel:
 		return "Parallel"
+	case *ReactiveSequence:
+		return "ReactiveSequence"
+	case *ReactiveFallback:
+		return "ReactiveFallback"
 	case *Inverter:
 		return "Inverter"
 	case *Repeater:
