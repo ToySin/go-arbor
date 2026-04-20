@@ -112,8 +112,68 @@ func main() {
 	tree.Tick(context.Background())
 	arbor.PrintTree(os.Stdout, tree)
 
-	// --- Scenario 4: Auto tick with Run ---
-	fmt.Println("\n--- Scenario 4: Auto tick with Run (500ms interval) ---")
+	// --- Scenario 4: Build tree with fluent builder ---
+	fmt.Println("\n--- Scenario 4: Fluent Builder API ---")
+	assignAttempts = 0
+	agentIdle = true
+	batteryLevel = 80
+
+	builderTree := arbor.NewBuilder().
+		Fallback("dispatch").
+		Sequence("try-assign").
+		Condition("agent-idle", func(ctx context.Context) bool {
+					return agentIdle
+				}).
+		Inverter("not-low-battery").
+		Condition("battery-low", func(ctx context.Context) bool {
+							return batteryLevel < 20
+						}).
+		End().
+		Action("find-agent", func(ctx context.Context) arbor.Status {
+					bb := arbor.BlackboardFrom(ctx)
+					bb.Set("target_agent", "agent-7")
+					bb.Set("job_id", "job-42")
+					fmt.Println("  >> Found best agent: agent-7")
+					return arbor.Success
+				}).
+		Retry("retry-assign", 3).
+		Action("assign-job", func(ctx context.Context) arbor.Status {
+						bb := arbor.BlackboardFrom(ctx)
+						agent, _ := arbor.GetTyped[string](bb, "target_agent")
+						jobID, _ := arbor.GetTyped[string](bb, "job_id")
+						assignAttempts++
+						if assignAttempts < 2 {
+							fmt.Printf("  >> Assign %s to %s failed (attempt %d)\n", jobID, agent, assignAttempts)
+							return arbor.Failure
+						}
+						fmt.Printf("  >> Assigned %s to %s\n", jobID, agent)
+						return arbor.Success
+					}).
+		End().
+		Action("notify", func(ctx context.Context) arbor.Status {
+					bb := arbor.BlackboardFrom(ctx)
+					agent, _ := arbor.GetTyped[string](bb, "target_agent")
+					fmt.Printf("  >> Notified %s\n", agent)
+					return arbor.Success
+				}).
+		End().
+		Action("queue-job", func(ctx context.Context) arbor.Status {
+				fmt.Println("  >> No suitable agent, job queued")
+				return arbor.Success
+			}).
+		End().
+		MustBuild()
+
+	fmt.Println("\n[Tick 1]")
+	builderTree.Tick(context.Background())
+	arbor.PrintTree(os.Stdout, builderTree)
+
+	fmt.Println("\n[Tick 2]")
+	builderTree.Tick(context.Background())
+	arbor.PrintTree(os.Stdout, builderTree)
+
+	// --- Scenario 5: Auto tick with Run ---
+	fmt.Println("\n--- Scenario 5: Auto tick with Run (500ms interval) ---")
 	batteryLevel = 80
 	agentIdle = true
 	assignAttempts = 0
